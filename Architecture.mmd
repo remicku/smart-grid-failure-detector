@@ -1,0 +1,50 @@
+flowchart TD
+    IOT1 --> ST
+    IOT2 --> ST
+    IOT3 --> ST
+
+    ST{{"Stream"}}:::stream --> P3
+    ST --> P1
+
+    P3[Processing storage]:::process --> S1
+
+    %% 🔴 ALERTING
+    subgraph Alerting
+        P1[Processing Alerts]:::process
+        S4[(Storage-KV)]:::storage
+        ST2{{"Stream"}}:::stream
+
+        S4 --> P1
+        P1 --> ST2
+        ST2 --> P4
+    end
+
+    P4[Mailler]:::process
+
+    %% 🔵 DATA LAKE
+    subgraph DataLake
+        S1[(Bronze)]:::storage --> P5
+        P5[Batch - Curater]:::process --> S2
+        S2[(Silver)]:::storage --> P6
+        P6[Batch - Aggregater]:::process --> S3
+        S3[(Gold)]:::storage
+    end
+
+    %% Stats
+    P2[Processing - Stats]:::process <--> S3
+
+
+    %% Detached Legend
+    subgraph Legende
+        direction TB
+        LS[(Storage)]:::storage
+        LP[Processing]:::process
+        LST{{"Stream"}}:::stream
+    end
+
+
+    classDef storage fill:#E3F2FD,stroke:#1E88E5,color:#0D1B2A,stroke-width:2px;
+    classDef process fill:#FFF3E0,stroke:#FB8C00,color:#0D1B2A,stroke-width:2px;
+    classDef stream fill:#E8F5E9,stroke:#43A047,color:#0D1B2A,stroke-width:2px;
+
+    classDef hidden fill:none,stroke:none;
