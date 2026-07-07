@@ -7,7 +7,7 @@ The module uses the shared `smartgrid.shared.AlertMessage` model and listens to 
 ## Responsibilities
 
 - consume alert messages from Kafka
-- store alert history in JSONL files
+- store alert history in PostgreSQL
 - send SMTP notifications for critical alerts
 - keep the list of email recipients in a local text file
 - expose alert history, notification history, health check, and recipient management endpoints
@@ -18,6 +18,15 @@ From the repository root:
 
 ```bash
 sbt "alertHandler/run"
+```
+
+The handler expects a PostgreSQL database to be available. On startup it creates the small `alerts` table and indexes if they do not exist.
+
+Minimal local database setup:
+
+```bash
+psql -U postgres -c "CREATE USER smartgrid WITH PASSWORD 'smartgrid';"
+psql -U postgres -c "CREATE DATABASE smartgrid OWNER smartgrid;"
 ```
 
 To run with custom configuration, load environment variables before starting sbt. A template is available in `.env.example`.
@@ -49,8 +58,9 @@ The application reads configuration from environment variables. It does not load
 | `SMART_GRID_KAFKA_POLL_TIMEOUT_MS` | `1000` | Kafka poll timeout in milliseconds. |
 | `SMART_GRID_ALERT_HANDLER_HOST` | `0.0.0.0` | HTTP bind host. |
 | `SMART_GRID_ALERT_HANDLER_PORT` | `8082` | HTTP port. |
-| `SMART_GRID_ALERTS_PATH` | `data/alerts/alerts.jsonl` | Stored alerts file. |
-| `SMART_GRID_CRITICAL_ALERTS_PATH` | `data/alerts/critical-alerts.jsonl` | Stored critical alerts file. |
+| `SMART_GRID_POSTGRES_URL` | `jdbc:postgresql://localhost:5432/smartgrid` | PostgreSQL JDBC URL for shared alert storage. |
+| `SMART_GRID_POSTGRES_USER` | `smartgrid` | PostgreSQL user. |
+| `SMART_GRID_POSTGRES_PASSWORD` | `smartgrid` | PostgreSQL password. |
 | `SMART_GRID_NOTIFICATIONS_PATH` | `data/notifications/emails.log` | Notification audit file. |
 | `SMART_GRID_MAIL_MODE` | `smtp` | `smtp` sends real emails, `file` only writes an audit entry. |
 | `SMART_GRID_MAIL_FROM` | empty | Sender email address. |
@@ -98,14 +108,13 @@ Expected JSON:
 `WARNING`:
 
 - console log
-- append to `data/alerts/alerts.jsonl`
+- insert into PostgreSQL table `alerts`
 - expose in dashboard/API
 
 `CRITICAL`:
 
 - visible console log
-- append to `data/alerts/alerts.jsonl`
-- append to `data/alerts/critical-alerts.jsonl`
+- insert into PostgreSQL table `alerts`
 - send SMTP email
 - append notification audit to `data/notifications/emails.log`
 - expose in dashboard/API
@@ -113,10 +122,14 @@ Expected JSON:
 Unknown severity:
 
 - no crash
-- append to `data/alerts/alerts.jsonl`
+- insert into PostgreSQL table `alerts`
 - clear console warning
 - no email
 - expose in dashboard/API
+
+## Scalability
+
+The handler can be scaled horizontally by running several instances with the same `SMART_GRID_ALERT_HANDLER_GROUP_ID`. Kafka assigns partitions of `ST2` across the instances, while PostgreSQL is the shared source of truth for the dashboard and API. Inserts are idempotent because `alert_id` is the primary key and duplicate Kafka replays use `ON CONFLICT DO NOTHING`.
 
 ## API
 
