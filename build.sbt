@@ -31,12 +31,22 @@ lazy val alertDetector = project
     testFrameworks += new TestFramework("munit.Framework")
   )
 
-// lazy val simulator = project.in(file("simulator")).dependsOn(shared)
+lazy val simulator = project
+  .in(file("SensorSimulator"))
+  .dependsOn(shared)
+  .settings(
+    name := "simulator",
+    libraryDependencies ++= Seq(
+      "com.github.fd4s" %% "fs2-kafka"   % fs2KafkaV,
+      "org.typelevel"   %% "cats-effect" % catsEffectV
+    )
+  )
+
 // lazy val alertHandler = project.in(file("alert-handler")).dependsOn(shared)
 // lazy val datalake = project.in(file("datalake")).dependsOn(shared)
 // lazy val analytics = project.in(file("analytics")).dependsOn(shared)
 
 lazy val root = project
   .in(file("."))
-  .aggregate(shared, alertDetector)
+  .aggregate(shared, alertDetector, simulator)
   .settings(name := "smart-grid")

@@ -8,7 +8,7 @@ class AlertLogicSpec extends munit.FunSuite {
     SensorMessage(
       sensorId = "s1",
       transformerId = "t1",
-      timestamp = 0L,
+      timestamp = "1970-01-01T00:00:00Z",
       region = "R1",
       voltage = 230.0,
       current = 10.0,

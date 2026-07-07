@@ -6,7 +6,7 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 final case class SensorMessage(
     sensorId: String,
     transformerId: String,
-    timestamp: Long,
+    timestamp: String,
     region: String,
     voltage: Double,
     current: Double,
