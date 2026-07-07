@@ -64,10 +64,19 @@ lazy val alertHandler = project
     Compile / run / fork := true,
     testFrameworks += new TestFramework("munit.Framework")
   )
-// lazy val datalake = project.in(file("datalake")).dependsOn(shared)
-// lazy val analytics = project.in(file("analytics")).dependsOn(shared)
+
+lazy val bronzeIngestor = project
+  .in(file("bronze-ingestor"))
+  .settings(
+    name := "bronze-ingestor",
+    libraryDependencies ++= Seq(
+      "com.github.fd4s" %% "fs2-kafka"   % fs2KafkaV,
+      "org.typelevel"   %% "cats-effect" % catsEffectV,
+      "org.slf4j"        % "slf4j-simple" % slf4jSimpleV
+    )
+  )
 
 lazy val root = project
   .in(file("."))
-  .aggregate(shared, alertDetector, simulator, alertHandler)
+  .aggregate(shared, alertDetector, simulator, alertHandler, bronzeIngestor)
   .settings(name := "smart-grid")
