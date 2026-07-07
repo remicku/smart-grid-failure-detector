@@ -17,17 +17,11 @@ The module uses the shared `smartgrid.shared.AlertMessage` model and listens to 
 From the repository root:
 
 ```bash
+docker compose up -d kafka postgres
 sbt "alertHandler/run"
 ```
 
-The handler expects a PostgreSQL database to be available. On startup it creates the small `alerts` table and indexes if they do not exist.
-
-Minimal local database setup:
-
-```bash
-psql -U postgres -c "CREATE USER smartgrid WITH PASSWORD 'smartgrid';"
-psql -U postgres -c "CREATE DATABASE smartgrid OWNER smartgrid;"
-```
+The handler expects PostgreSQL to be available. The local Docker Compose stack starts a `smartgrid` database with the default credentials from `.env.example`. On startup, the handler creates the `alerts` table and indexes if they do not exist.
 
 To run with custom configuration, load environment variables before starting sbt. A template is available in `.env.example`.
 

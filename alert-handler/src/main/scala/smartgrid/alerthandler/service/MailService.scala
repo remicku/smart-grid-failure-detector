@@ -2,13 +2,13 @@ package smartgrid.alerthandler.service
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, StandardOpenOption}
-import java.util.{Date, Properties}
 import java.util.regex.Pattern
 
 import cats.effect.IO
 import cats.syntax.all._
 import jakarta.mail.internet.{InternetAddress, MimeMessage}
 import jakarta.mail.{Address, Authenticator, Message, PasswordAuthentication, Session, Transport}
+import scala.jdk.CollectionConverters._
 import smartgrid.alerthandler.config.{MailConfig, MailMode, SmtpConfig}
 import smartgrid.alerthandler.model.StoredAlert
 
@@ -127,7 +127,6 @@ final class MailService(
                   message.setRecipients(Message.RecipientType.TO, recipientAddresses)
                   message.setSubject(subject(alert), StandardCharsets.UTF_8.name())
                   message.setText(body(alert), StandardCharsets.UTF_8.name())
-                  message.setSentDate(new Date())
                   Transport.send(message)
                   recipients
                 }.attempt.map(_.leftMap(error => s"Cannot send SMTP email: ${error.getMessage}"))
@@ -156,20 +155,34 @@ final class MailService(
       Right(Session.getInstance(smtpProperties(smtp)))
     }
 
-  private def smtpProperties(smtp: SmtpConfig): Properties = {
-    val props = new Properties()
-    List(
-      "mail.transport.protocol" -> "smtp",
-      "mail.smtp.host" -> smtp.host,
-      "mail.smtp.port" -> smtp.port.toString,
-      "mail.smtp.auth" -> smtp.auth.toString,
-      "mail.smtp.starttls.enable" -> smtp.startTls.toString,
-      "mail.smtp.ssl.enable" -> smtp.ssl.toString,
-      "mail.smtp.connectiontimeout" -> smtp.connectionTimeoutMs.toString,
-      "mail.smtp.timeout" -> smtp.timeoutMs.toString,
-      "mail.smtp.writetimeout" -> smtp.timeoutMs.toString
-    ).foreach { case (key, value) => props.put(key, value) }
-    props
+  private def smtpProperties(smtp: SmtpConfig): java.util.Properties =
+    new MailProperties(
+      Map(
+        "mail.transport.protocol" -> "smtp",
+        "mail.smtp.host" -> smtp.host,
+        "mail.smtp.port" -> smtp.port.toString,
+        "mail.smtp.auth" -> smtp.auth.toString,
+        "mail.smtp.starttls.enable" -> smtp.startTls.toString,
+        "mail.smtp.ssl.enable" -> smtp.ssl.toString,
+        "mail.smtp.connectiontimeout" -> smtp.connectionTimeoutMs.toString,
+        "mail.smtp.timeout" -> smtp.timeoutMs.toString,
+        "mail.smtp.writetimeout" -> smtp.timeoutMs.toString
+      )
+    )
+
+  private final class MailProperties(values: Map[String, String]) extends java.util.Properties {
+    override def getProperty(key: String): String =
+      values
+        .collectFirst { case (`key`, value) => value }
+        .getOrElse(super.getProperty(key))
+
+    override def getProperty(key: String, defaultValue: String): String =
+      values
+        .collectFirst { case (`key`, value) => value }
+        .getOrElse(defaultValue)
+
+    override def stringPropertyNames(): java.util.Set[String] =
+      values.keySet.asJava
   }
 
   private def validateSmtp(config: MailConfig, recipients: List[String]): Either[String, SmtpConfig] = {
