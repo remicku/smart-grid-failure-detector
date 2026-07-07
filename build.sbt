@@ -9,6 +9,16 @@ val munitV      = "1.0.0"
 val jakartaMailV = "2.0.1"
 val slf4jSimpleV = "1.7.36"
 val postgresqlV = "42.7.3"
+val sparkV = "3.5.1"
+
+lazy val sparkRunSettings = Seq(
+  Compile / run / fork := true,
+  Compile / run / javaOptions ++= Seq(
+    "--add-opens=java.base/java.lang=ALL-UNNAMED",
+    "--add-opens=java.base/java.nio=ALL-UNNAMED",
+    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+  )
+)
 
 lazy val shared = project
   .in(file("shared"))
@@ -76,7 +86,15 @@ lazy val bronzeIngestor = project
     )
   )
 
+lazy val datalake = project
+  .in(file("datalake"))
+  .settings(
+    name := "datalake",
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkV
+  )
+  .settings(sparkRunSettings)
+
 lazy val root = project
   .in(file("."))
-  .aggregate(shared, alertDetector, simulator, alertHandler, bronzeIngestor)
+  .aggregate(shared, alertDetector, simulator, alertHandler, bronzeIngestor, datalake)
   .settings(name := "smart-grid")
