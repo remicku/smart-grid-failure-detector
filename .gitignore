@@ -1,3 +1,4 @@
+
 target/
 project/target/
 project/project/
@@ -15,3 +16,22 @@ project/project/
 # Local runtime data
 data/
 alert-handler/data/
+
+
+target/
+project/target/
+project/project/
+
+
+.bloop/
+.metals/
+.bsp/
+
+
+.idea/
+.vscode/
+*.iml
+
+
+.DS_Store
+
