@@ -27,6 +27,9 @@ final class AlertState private (ref: Ref[IO, Vector[StoredAlert]]) extends Alert
   override def all: IO[Vector[StoredAlert]] =
     ref.modify(current => (current, current))
 
+  override def recent(limit: Int): IO[Vector[StoredAlert]] =
+    all.map(_.take(limit))
+
   override def critical: IO[Vector[StoredAlert]] =
     all.map(_.filter(_.severity == "CRITICAL"))
 
@@ -52,6 +55,16 @@ final class AlertState private (ref: Ref[IO, Vector[StoredAlert]]) extends Alert
       _.groupBy(alert => AlertRepository.normalizeRegion(alert.source.region))
         .map { case (region, alerts) => region -> alerts.size }
     )
+
+  override def claimMailNotification(alertId: String): IO[Either[String, Boolean]] =
+    IO.pure(Right(true))
+
+  override def recordMailNotification(
+      alertId: String,
+      status: String,
+      message: Option[String]
+  ): IO[Either[String, Unit]] =
+    IO.pure(Right(()))
 }
 
 object AlertState {

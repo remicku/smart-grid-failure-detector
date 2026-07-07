@@ -16,7 +16,7 @@ paths:
       summary: List all processed alerts
       responses:
         "200":
-          description: All alerts available in dashboard state.
+          description: All alerts available in PostgreSQL storage.
   /dev/alerts:
     post:
       summary: Process one alert without Kafka

@@ -72,7 +72,7 @@ final class AlertApi(
     (method, path) match {
       case ("GET", "/" | "/dashboard") =>
         (
-          repository.all,
+          repository.recent(DashboardAlertLimit),
           repository.counts,
           repository.countsByRegion,
           mailService.readRecipients
@@ -257,6 +257,8 @@ final class AlertApi(
 }
 
 object AlertApi {
+  private val DashboardAlertLimit: Int = 500
+
   final case class HealthResponse(
       status: String,
       service: String,

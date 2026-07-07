@@ -8,10 +8,13 @@ trait AlertRepository {
   def appendAlert(alert: StoredAlert): IO[Either[String, Unit]]
   def appendCriticalAlert(alert: StoredAlert): IO[Either[String, Unit]]
   def all: IO[Vector[StoredAlert]]
+  def recent(limit: Int): IO[Vector[StoredAlert]]
   def critical: IO[Vector[StoredAlert]]
   def byRegion(region: String): IO[Vector[StoredAlert]]
   def counts: IO[AlertCounts]
   def countsByRegion: IO[Map[String, Int]]
+  def claimMailNotification(alertId: String): IO[Either[String, Boolean]]
+  def recordMailNotification(alertId: String, status: String, message: Option[String]): IO[Either[String, Unit]]
 }
 
 object AlertRepository {

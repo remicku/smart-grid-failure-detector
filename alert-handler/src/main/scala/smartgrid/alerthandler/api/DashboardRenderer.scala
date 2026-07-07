@@ -173,7 +173,7 @@ object DashboardRenderer {
        |<body>
        |  <header>
        |    <h1>Smart Grid Alert Handler</h1>
-       |    <p class="subtitle">Kafka ST2 alert handling, JSON Lines storage and SMTP notifications.</p>
+       |    <p class="subtitle">Kafka ST2 alert handling, PostgreSQL storage and SMTP notifications.</p>
        |  </header>
        |  <main>
        |    <section class="stats">

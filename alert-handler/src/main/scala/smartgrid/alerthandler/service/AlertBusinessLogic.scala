@@ -42,15 +42,46 @@ final class AlertBusinessLogic(
         )
 
       case SendMailNotification(alert) =>
-        mailService.appendNotification(alert).map(
-          _.fold(
-            error => ActionFailed("send-mail-notification", error),
-            _ => ActionSucceeded("send-mail-notification")
-          )
-        )
+        sendMailNotification(alert)
 
       case AddToDashboardState(_) =>
         IO.pure(ActionSucceeded("dashboard-reads-postgres"))
+    }
+
+  private def sendMailNotification(alert: StoredAlert): IO[ActionResult] =
+    repository.claimMailNotification(alert.alertId).flatMap(
+      _.fold(
+        error => IO.pure(ActionFailed("claim-mail-notification", error)),
+        claimed =>
+          if (claimed) {
+            mailService.appendNotification(alert).flatMap(result => recordMailResult(alert, result))
+          } else {
+            IO.pure(ActionSucceeded("send-mail-notification-skipped"))
+          }
+      )
+    )
+
+  private def recordMailResult(alert: StoredAlert, result: Either[String, Unit]): IO[ActionResult] =
+    result match {
+      case Left(error) =>
+        repository
+          .recordMailNotification(alert.alertId, "FAILED", Some(error))
+          .map(
+            _.fold(
+              statusError => ActionFailed("record-mail-notification", statusError),
+              _ => ActionFailed("send-mail-notification", error)
+            )
+          )
+
+      case Right(_) =>
+        repository
+          .recordMailNotification(alert.alertId, "SENT", None)
+          .map(
+            _.fold(
+              statusError => ActionFailed("record-mail-notification", statusError),
+              _ => ActionSucceeded("send-mail-notification")
+            )
+          )
     }
 }
 

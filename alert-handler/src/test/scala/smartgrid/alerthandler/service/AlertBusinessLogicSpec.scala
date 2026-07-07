@@ -73,7 +73,7 @@ class AlertBusinessLogicSpec extends munit.FunSuite {
     assertEquals(store.readRecipients.unsafeRunSync(), Right(List("first@example.com", "second@example.com")))
   }
 
-  test("dashboard state filters alerts by region") {
+  test("repository filters alerts by region") {
     val parisAlert = StoredAlert.from(sampleAlert("WARNING"), AlertSeverity.Warning)
     val lyonAlert = parisAlert.copy(alertId = "alert-002", source = parisAlert.source.copy(region = "Lyon-07"))
     val state = AlertState.from(Vector(parisAlert, lyonAlert)).unsafeRunSync()

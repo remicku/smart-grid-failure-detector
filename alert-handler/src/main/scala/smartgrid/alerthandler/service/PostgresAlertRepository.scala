@@ -1,5 +1,7 @@
 package smartgrid.alerthandler.service
 
+import java.sql.PreparedStatement
+
 import scala.annotation.tailrec
 
 import cats.effect.{IO, Resource}
@@ -31,39 +33,32 @@ final class PostgresAlertRepository(config: DatabaseConfig) extends AlertReposit
       .map(_.leftMap(error => s"Cannot initialize PostgreSQL alert table: ${error.getMessage}"))
 
   override def appendAlert(alert: StoredAlert): IO[Either[String, Unit]] =
-    connection
-      .use(conn =>
-        Resource.make(IO.blocking(conn.prepareStatement(insertAlertSql)))(stmt =>
-          IO.blocking(stmt.close()).handleError(_ => ())
-        ).use(stmt =>
-          IO.blocking {
-            stmt.setString(1, alert.alertId)
-            stmt.setString(2, alert.severity)
-            stmt.setLong(3, alert.detectedAt)
-            stmt.setString(4, AlertRepository.normalizeRegion(alert.source.region))
-            stmt.setString(5, alert.asJson.noSpaces)
-            stmt.executeUpdate()
-            ()
-          }
-        )
-      )
-      .attempt
-      .map(_.leftMap(error => s"Cannot write alert to PostgreSQL: ${error.getMessage}"))
+    executeUpdate(insertAlertSql) { stmt =>
+      stmt.setString(1, alert.alertId)
+      stmt.setString(2, alert.severity)
+      stmt.setLong(3, alert.detectedAt)
+      stmt.setString(4, AlertRepository.normalizeRegion(alert.source.region))
+      stmt.setString(5, alert.asJson.noSpaces)
+    }.map(_.void)
 
   override def appendCriticalAlert(alert: StoredAlert): IO[Either[String, Unit]] =
-    IO.pure(Right(()))
+    executeUpdate(prepareMailNotificationSql)(_.setString(1, alert.alertId)).map(_.void)
 
   override def all: IO[Vector[StoredAlert]] =
-    queryAlerts("SELECT payload_json FROM alerts ORDER BY detected_at DESC", None)
+    queryAlerts("SELECT payload_json FROM alerts ORDER BY detected_at DESC")(_ => ())
+
+  override def recent(limit: Int): IO[Vector[StoredAlert]] =
+    queryAlerts("SELECT payload_json FROM alerts ORDER BY detected_at DESC LIMIT ?")(_.setInt(1, limit))
 
   override def critical: IO[Vector[StoredAlert]] =
-    queryAlerts("SELECT payload_json FROM alerts WHERE severity = ? ORDER BY detected_at DESC", Some("CRITICAL"))
+    queryAlerts("SELECT payload_json FROM alerts WHERE severity = ? ORDER BY detected_at DESC")(
+      _.setString(1, "CRITICAL")
+    )
 
   override def byRegion(region: String): IO[Vector[StoredAlert]] =
     queryAlerts(
-      "SELECT payload_json FROM alerts WHERE lower(region) = lower(?) ORDER BY detected_at DESC",
-      Some(AlertRepository.normalizeRegion(region))
-    )
+      "SELECT payload_json FROM alerts WHERE lower(region) = lower(?) ORDER BY detected_at DESC"
+    )(_.setString(1, AlertRepository.normalizeRegion(region)))
 
   override def counts: IO[AlertCounts] =
     connection.use(conn =>
@@ -115,12 +110,48 @@ final class PostgresAlertRepository(config: DatabaseConfig) extends AlertReposit
       )
     )
 
-  private def queryAlerts(sql: String, parameter: Option[String]): IO[Vector[StoredAlert]] =
+  override def claimMailNotification(alertId: String): IO[Either[String, Boolean]] =
+    executeUpdate(claimMailNotificationSql)(_.setString(1, alertId)).map(_.map(_ > 0))
+
+  override def recordMailNotification(
+      alertId: String,
+      status: String,
+      message: Option[String]
+  ): IO[Either[String, Unit]] =
+    message.fold(
+      executeUpdate(recordMailNotificationWithoutErrorSql) { stmt =>
+        stmt.setString(1, status)
+        stmt.setString(2, alertId)
+      }
+    )(text =>
+      executeUpdate(recordMailNotificationWithErrorSql) { stmt =>
+        stmt.setString(1, status)
+        stmt.setString(2, text)
+        stmt.setString(3, alertId)
+      }
+    ).map(_.void)
+
+  private def executeUpdate(sql: String)(bind: PreparedStatement => Unit): IO[Either[String, Int]] =
+    connection
+      .use(conn =>
+        Resource.make(IO.blocking(conn.prepareStatement(sql)))(stmt =>
+          IO.blocking(stmt.close()).handleError(_ => ())
+        ).use(stmt =>
+          IO.blocking {
+            bind(stmt)
+            stmt.executeUpdate()
+          }
+        )
+      )
+      .attempt
+      .map(_.leftMap(error => s"Cannot update PostgreSQL alert table: ${error.getMessage}"))
+
+  private def queryAlerts(sql: String)(bind: PreparedStatement => Unit): IO[Vector[StoredAlert]] =
     connection.use(conn =>
       Resource.make(IO.blocking(conn.prepareStatement(sql)))(stmt =>
         IO.blocking(stmt.close()).handleError(_ => ())
       ).use(stmt =>
-        IO.blocking(parameter.fold(())(value => stmt.setString(1, value))) *>
+        IO.blocking(bind(stmt)) *>
           Resource.make(IO.blocking(stmt.executeQuery()))(rs =>
             IO.blocking(rs.close()).handleError(_ => ())
           ).use(rs =>
@@ -167,15 +198,50 @@ object PostgresAlertRepository {
         |  payload_json TEXT NOT NULL,
         |  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         |)""".stripMargin,
+      "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS mail_notification_status TEXT NOT NULL DEFAULT 'NOT_REQUIRED'",
+      "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS mail_notification_error TEXT",
+      "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS mail_notification_updated_at TIMESTAMPTZ",
       "CREATE INDEX IF NOT EXISTS alerts_detected_at_idx ON alerts (detected_at DESC)",
       "CREATE INDEX IF NOT EXISTS alerts_region_idx ON alerts (region)",
-      "CREATE INDEX IF NOT EXISTS alerts_severity_idx ON alerts (severity)"
+      "CREATE INDEX IF NOT EXISTS alerts_severity_idx ON alerts (severity)",
+      "CREATE INDEX IF NOT EXISTS alerts_mail_notification_status_idx ON alerts (mail_notification_status)"
     )
 
   private val insertAlertSql: String =
     """INSERT INTO alerts (alert_id, severity, detected_at, region, payload_json)
       |VALUES (?, ?, ?, ?, ?)
       |ON CONFLICT (alert_id) DO NOTHING""".stripMargin
+
+  private val prepareMailNotificationSql: String =
+    """UPDATE alerts
+      |SET mail_notification_status = 'PENDING',
+      |    mail_notification_error = NULL,
+      |    mail_notification_updated_at = now()
+      |WHERE alert_id = ?
+      |  AND mail_notification_status IN ('NOT_REQUIRED', 'FAILED')""".stripMargin
+
+  private val claimMailNotificationSql: String =
+    """UPDATE alerts
+      |SET mail_notification_status = 'SENDING',
+      |    mail_notification_error = NULL,
+      |    mail_notification_updated_at = now()
+      |WHERE alert_id = ?
+      |  AND severity = 'CRITICAL'
+      |  AND mail_notification_status IN ('PENDING', 'FAILED', 'NOT_REQUIRED')""".stripMargin
+
+  private val recordMailNotificationWithoutErrorSql: String =
+    """UPDATE alerts
+      |SET mail_notification_status = ?,
+      |    mail_notification_error = NULL,
+      |    mail_notification_updated_at = now()
+      |WHERE alert_id = ?""".stripMargin
+
+  private val recordMailNotificationWithErrorSql: String =
+    """UPDATE alerts
+      |SET mail_notification_status = ?,
+      |    mail_notification_error = ?,
+      |    mail_notification_updated_at = now()
+      |WHERE alert_id = ?""".stripMargin
 
   private val countSql: String =
     """SELECT

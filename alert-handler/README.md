@@ -9,6 +9,7 @@ The module uses the shared `smartgrid.shared.AlertMessage` model and listens to 
 - consume alert messages from Kafka
 - store alert history in PostgreSQL
 - send SMTP notifications for critical alerts
+- store SMTP notification status in PostgreSQL
 - keep the list of email recipients in a local text file
 - expose alert history, notification history, health check, and recipient management endpoints
 
@@ -110,6 +111,7 @@ Expected JSON:
 - visible console log
 - insert into PostgreSQL table `alerts`
 - send SMTP email
+- store `SENT` or `FAILED` notification status in PostgreSQL
 - append notification audit to `data/notifications/emails.log`
 - expose in dashboard/API
 
@@ -123,7 +125,7 @@ Unknown severity:
 
 ## Scalability
 
-The handler can be scaled horizontally by running several instances with the same `SMART_GRID_ALERT_HANDLER_GROUP_ID`. Kafka assigns partitions of `ST2` across the instances, while PostgreSQL is the shared source of truth for the dashboard and API. Inserts are idempotent because `alert_id` is the primary key and duplicate Kafka replays use `ON CONFLICT DO NOTHING`.
+The handler can be scaled horizontally by running several instances with the same `SMART_GRID_ALERT_HANDLER_GROUP_ID`. Kafka assigns partitions of `ST2` across the instances, while PostgreSQL is the shared source of truth for the dashboard and API. Inserts are idempotent because `alert_id` is the primary key and duplicate Kafka replays use `ON CONFLICT DO NOTHING`. SMTP notifications are also tracked in PostgreSQL, so replayed alerts with an already sent notification are skipped.
 
 ## API
 
