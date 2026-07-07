@@ -2,6 +2,7 @@ package smartgrid.datalake
 
 import org.apache.spark.sql.{Column, DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions._
+import smartgrid.shared.AlertThresholds
 
 object DataLakeJob {
 
@@ -99,7 +100,7 @@ object DataLakeJob {
     to_timestamp(regexp_replace(regexp_replace(timestamp, "T", " "), "Z", ""))
 
   private def alertSignal: Column =
-    col("failureRiskScore") >= lit(0.8) ||
+    col("failureRiskScore") >= lit(AlertThresholds.WarningThreshold) ||
       col("status").isin("ALERT", "WARNING", "CRITICAL", "OVERLOAD", "OVERHEATING")
 
   private def validSilverRow: Column =

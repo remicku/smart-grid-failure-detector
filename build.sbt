@@ -91,6 +91,7 @@ lazy val bronzeIngestor = project
 
 lazy val datalake = project
   .in(file("datalake"))
+  .dependsOn(shared)
   .settings(
     name := "datalake",
     Compile / mainClass := Some("smartgrid.datalake.Main"),

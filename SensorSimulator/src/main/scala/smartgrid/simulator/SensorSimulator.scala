@@ -3,7 +3,7 @@ package smartgrid.simulator
 import cats.effect.IO
 import cats.effect.std.Random
 import cats.syntax.all._
-import smartgrid.shared.SensorMessage
+import smartgrid.shared.{AlertThresholds, SensorMessage}
 
 object SensorSimulator {
 
@@ -22,8 +22,8 @@ object SensorSimulator {
   }
 
   def statusOf(score: Double): String =
-    if (score >= 0.7) "CRITICAL"
-    else if (score >= 0.4) "WARNING"
+    if (score >= AlertThresholds.CriticalThreshold) "CRITICAL"
+    else if (score >= AlertThresholds.WarningThreshold) "WARNING"
     else "NORMAL"
 
   def nextMessage(random: Random[IO]): IO[SensorMessage] =

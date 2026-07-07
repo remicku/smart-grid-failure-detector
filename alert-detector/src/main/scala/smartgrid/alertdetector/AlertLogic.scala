@@ -1,11 +1,11 @@
 package smartgrid.alertdetector
 
-import smartgrid.shared.SensorMessage
+import smartgrid.shared.{AlertThresholds, SensorMessage}
 
 object AlertLogic {
 
-  val WarningThreshold: Double  = 0.8
-  val CriticalThreshold: Double = 0.9
+  val WarningThreshold: Double  = AlertThresholds.WarningThreshold
+  val CriticalThreshold: Double = AlertThresholds.CriticalThreshold
 
   def severityFor(score: Double): Option[String] =
     if (score >= CriticalThreshold) Some("CRITICAL")
