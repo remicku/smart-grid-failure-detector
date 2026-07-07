@@ -65,4 +65,22 @@ object SensorSimulator:
       s""""temperature":${r.temperature},"load":${r.load},""" +
       s""""failureRiskScore":${r.failureRiskScore},"status":"${r.status}"}"""
 
- 
+  def main(args: Array[String]): Unit =
+    val props = new Properties()
+    props.put("bootstrap.servers", "localhost:9092") // Le serveur Kafka
+    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+
+    val producer = new KafkaProducer[String, String](props)
+    val random = Random()
+
+    // loop réccursive pour éviter les boucles
+    // génère des lectures de capteurs et les envoie à Kafka toutes les secondes
+    @annotation.tailrec
+    def loop(): Unit =
+      val reading = nextReading(random)
+      producer.send(new ProducerRecord("sensor-telemetry", reading.transformerId, toJson(reading)))
+      Thread.sleep(1000)
+      loop()
+
+    loop()
