@@ -1,0 +1,77 @@
+openapi: 3.0.3
+info:
+  title: Smart Grid Alert Handler API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8082
+paths:
+  /health:
+    get:
+      summary: Service health
+      responses:
+        "200":
+          description: Service status.
+  /alerts:
+    get:
+      summary: List all processed alerts
+      responses:
+        "200":
+          description: All alerts available in dashboard state.
+  /dev/alerts:
+    post:
+      summary: Process one alert without Kafka
+      description: Development endpoint using the same business logic as the Kafka consumer.
+      responses:
+        "202":
+          description: Alert processed.
+        "400":
+          description: Invalid alert JSON.
+  /alerts/critical:
+    get:
+      summary: List critical alerts
+      responses:
+        "200":
+          description: Critical alerts.
+  /alerts/count:
+    get:
+      summary: Count alerts by severity
+      responses:
+        "200":
+          description: Total, warning, critical and unknown counts.
+  /alerts/by-region/{region}:
+    get:
+      summary: List alerts by region
+      parameters:
+        - name: region
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alerts matching the requested region.
+  /notifications:
+    get:
+      summary: List local email notification audit entries
+      responses:
+        "200":
+          description: SMTP/file notification audit entries.
+  /mail/recipients:
+    get:
+      summary: List configured email recipients
+      responses:
+        "200":
+          description: Current recipients.
+    post:
+      summary: Save configured email recipients
+      responses:
+        "303":
+          description: Recipients saved, redirects to dashboard.
+        "400":
+          description: Invalid recipients.
+  /dashboard:
+    get:
+      summary: HTML dashboard
+      responses:
+        "200":
+          description: Server-rendered dashboard.
