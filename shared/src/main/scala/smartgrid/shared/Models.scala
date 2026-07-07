@@ -23,7 +23,7 @@ object SensorMessage {
 
 final case class AlertMessage(
     alertId: String,
-    severity: String, // "WARNING" | "CRITICAL"
+    severity: String,
     reason: String,
     detectedAt: Long,
     source: SensorMessage

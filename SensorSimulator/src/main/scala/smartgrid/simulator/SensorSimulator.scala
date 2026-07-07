@@ -10,10 +10,8 @@ object SensorSimulator {
   val regions: List[String] =
     List("Ile-de-France", "Auvergne-Rhone-Alpes", "Occitanie", "Bretagne", "Grand-Est")
 
-  // Borne la valeur entre 0 et 1
   def clamp01(value: Double): Double = math.max(0.0, math.min(1.0, value))
 
-  // 2 chiffres apres la virgule
   def round2(value: Double): Double = math.round(value * 100.0) / 100.0
 
   def riskScore(voltage: Double, temperature: Double, load: Double): Double = {
@@ -28,7 +26,6 @@ object SensorSimulator {
     else if (score >= 0.4) "WARNING"
     else "NORMAL"
 
-  // Genere une mesure aleatoire coherente, horodatee a l'instant courant.
   def nextMessage(random: Random[IO]): IO[SensorMessage] =
     (
       random.nextDouble,
