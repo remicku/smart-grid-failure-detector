@@ -8,3 +8,10 @@ project/project/
 *.class
 *.log
 .DS_Store
+.env
+.env.*
+!.env.example
+
+# Local runtime data
+data/
+alert-handler/data/
