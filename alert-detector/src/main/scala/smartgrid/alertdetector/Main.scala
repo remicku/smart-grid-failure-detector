@@ -5,6 +5,7 @@ import scala.concurrent.duration._
 import cats.effect.{IO, IOApp}
 import cats.effect.std.{Console, UUIDGen}
 import cats.syntax.all._
+import fs2.Chunk
 import fs2.kafka._
 import io.circe.parser.decode
 import io.circe.syntax._
@@ -49,25 +50,29 @@ object Main extends IOApp.Simple {
     }
 
   val run: IO[Unit] =
-    KafkaConsumer
-      .stream(consumerSettings)
-      .subscribeTo(InputTopic)
-      .records
-      .mapAsync(16) { committable =>
-        process(committable.record.value).map { maybeAlert =>
-          maybeAlert.fold(
-            ProducerRecords(List.empty[ProducerRecord[String, String]], committable.offset)
-          ) { alert =>
-            ProducerRecords.one(
-              ProducerRecord(OutputTopic, alert.source.transformerId, alert.asJson.noSpaces),
-              committable.offset
-            )
+    KafkaProducer
+      .stream(producerSettings)
+      .flatMap { producer =>
+        KafkaConsumer
+          .stream(consumerSettings)
+          .subscribeTo(InputTopic)
+          .records
+          .mapAsync(16) { committable =>
+            process(committable.record.value).map { maybeAlert =>
+              val records: ProducerRecords[String, String] =
+                maybeAlert.fold(Chunk.empty[ProducerRecord[String, String]]) { alert =>
+                  Chunk.singleton(
+                    ProducerRecord(OutputTopic, alert.source.transformerId, alert.asJson.noSpaces)
+                  )
+                }
+              committable.offset -> records
+            }
           }
-        }
+          .evalMap { case (offset, records) =>
+            producer.produce(records).flatten.as(offset)
+          }
+          .through(commitBatchWithin(500, 15.seconds))
       }
-      .through(KafkaProducer.pipe(producerSettings))
-      .map(_.passthrough)
-      .through(commitBatchWithin(500, 15.seconds))
       .compile
       .drain
 }
