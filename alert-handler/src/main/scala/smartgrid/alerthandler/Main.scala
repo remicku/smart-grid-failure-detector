@@ -9,10 +9,9 @@ import smartgrid.alerthandler.kafka.AlertConsumer
 import smartgrid.alerthandler.model.{AlertSeverity, StoredAlert}
 import smartgrid.alerthandler.service.{
   AlertBusinessLogic,
-  AlertState,
-  AlertStorage,
   MailRecipientStore,
-  MailService
+  MailService,
+  PostgresAlertRepository
 }
 import smartgrid.shared.{AlertMessage, SensorMessage}
 
@@ -30,21 +29,20 @@ object Main extends IOApp {
   }
 
   private def startService(config: AppConfig, mailService: MailService): IO[Unit] = {
-    val storage = new AlertStorage(config.storage)
+    val repository = new PostgresAlertRepository(config.database)
 
-    storage.loadAlerts.flatMap(
+    repository.init.flatMap(
       _.fold(
         error =>
-          IO.delay(Console.err.println(s"[alert-handler] Existing alert history not loaded: $error"))
-            .as(Vector.empty[StoredAlert]),
-        alerts => IO.pure(alerts)
+          IO.delay(Console.err.println(s"[alert-handler] PostgreSQL initialization failed: $error")) *>
+            IO.raiseError(new RuntimeException(error)),
+        _ => IO.println("[alert-handler] PostgreSQL alert repository ready.")
       )
-    ).flatMap { initialAlerts =>
-      AlertState.from(initialAlerts).flatMap { state =>
-        val businessLogic = new AlertBusinessLogic(storage, mailService, state)
+    ) *>
         Dispatcher.parallel[IO].use { dispatcher =>
+          val businessLogic = new AlertBusinessLogic(repository, mailService)
           val api =
-            new AlertApi(config.server, config.kafka.alertsTopic, state, mailService, businessLogic, dispatcher)
+            new AlertApi(config.server, config.kafka.alertsTopic, repository, mailService, businessLogic, dispatcher)
           val consumer =
             AlertConsumer
               .stream(config.kafka, businessLogic)
@@ -60,8 +58,6 @@ object Main extends IOApp {
 
           api.start *> consumer.guarantee(api.stop)
         }
-      }
-    }
   }
 
   private def sendTestMail(mailService: MailService): IO[Unit] =

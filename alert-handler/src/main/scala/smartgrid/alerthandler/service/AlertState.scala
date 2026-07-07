@@ -11,22 +11,31 @@ final case class AlertCounts(
     unknown: Int
 )
 
-final class AlertState private (ref: Ref[IO, Vector[StoredAlert]]) {
+final class AlertState private (ref: Ref[IO, Vector[StoredAlert]]) extends AlertRepository {
+  override def init: IO[Either[String, Unit]] =
+    IO.pure(Right(()))
+
+  override def appendAlert(alert: StoredAlert): IO[Either[String, Unit]] =
+    add(alert).as(Right(()))
+
+  override def appendCriticalAlert(alert: StoredAlert): IO[Either[String, Unit]] =
+    IO.pure(Right(()))
+
   def add(alert: StoredAlert): IO[Unit] =
     ref.update(current => current :+ alert)
 
-  def all: IO[Vector[StoredAlert]] =
+  override def all: IO[Vector[StoredAlert]] =
     ref.modify(current => (current, current))
 
-  def critical: IO[Vector[StoredAlert]] =
+  override def critical: IO[Vector[StoredAlert]] =
     all.map(_.filter(_.severity == "CRITICAL"))
 
-  def byRegion(region: String): IO[Vector[StoredAlert]] = {
-    val wanted = normalizeRegion(region)
-    all.map(_.filter(alert => normalizeRegion(alert.source.region).equalsIgnoreCase(wanted)))
+  override def byRegion(region: String): IO[Vector[StoredAlert]] = {
+    val wanted = AlertRepository.normalizeRegion(region)
+    all.map(_.filter(alert => AlertRepository.normalizeRegion(alert.source.region).equalsIgnoreCase(wanted)))
   }
 
-  def counts: IO[AlertCounts] =
+  override def counts: IO[AlertCounts] =
     all.map { alerts =>
       val warning = alerts.count(_.severity == "WARNING")
       val criticalCount = alerts.count(_.severity == "CRITICAL")
@@ -38,14 +47,11 @@ final class AlertState private (ref: Ref[IO, Vector[StoredAlert]]) {
       )
     }
 
-  def countsByRegion: IO[Map[String, Int]] =
+  override def countsByRegion: IO[Map[String, Int]] =
     all.map(
-      _.groupBy(alert => normalizeRegion(alert.source.region))
+      _.groupBy(alert => AlertRepository.normalizeRegion(alert.source.region))
         .map { case (region, alerts) => region -> alerts.size }
     )
-
-  private def normalizeRegion(value: String): String =
-    Option(value).map(_.trim).filter(_.nonEmpty).getOrElse("unknown-region")
 }
 
 object AlertState {

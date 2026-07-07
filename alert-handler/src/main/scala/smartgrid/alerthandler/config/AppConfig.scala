@@ -15,9 +15,13 @@ final case class ServerConfig(
 )
 
 final case class StorageConfig(
-    alertsPath: Path,
-    criticalAlertsPath: Path,
     notificationsPath: Path
+)
+
+final case class DatabaseConfig(
+    url: String,
+    user: String,
+    password: String
 )
 
 sealed trait MailMode {
@@ -64,6 +68,7 @@ final case class AppConfig(
     kafka: KafkaConfig,
     server: ServerConfig,
     storage: StorageConfig,
+    database: DatabaseConfig,
     mail: MailConfig
 )
 
@@ -81,13 +86,14 @@ object AppConfig {
         port = envInt("SMART_GRID_ALERT_HANDLER_PORT", 8082)
       ),
       storage = StorageConfig(
-        alertsPath = Path.of(env("SMART_GRID_ALERTS_PATH").getOrElse("data/alerts/alerts.jsonl")),
-        criticalAlertsPath = Path.of(
-          env("SMART_GRID_CRITICAL_ALERTS_PATH").getOrElse("data/alerts/critical-alerts.jsonl")
-        ),
         notificationsPath = Path.of(
           env("SMART_GRID_NOTIFICATIONS_PATH").getOrElse("data/notifications/emails.log")
         )
+      ),
+      database = DatabaseConfig(
+        url = env("SMART_GRID_POSTGRES_URL").getOrElse("jdbc:postgresql://localhost:5432/smartgrid"),
+        user = env("SMART_GRID_POSTGRES_USER").getOrElse("smartgrid"),
+        password = env("SMART_GRID_POSTGRES_PASSWORD").getOrElse("smartgrid")
       ),
       mail = MailConfig(
         mode = MailMode.parse(env("SMART_GRID_MAIL_MODE").getOrElse("smtp")),

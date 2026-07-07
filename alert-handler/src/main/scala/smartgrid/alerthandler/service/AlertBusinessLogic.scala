@@ -7,9 +7,8 @@ import smartgrid.alerthandler.model.{AlertSeverity, StoredAlert}
 import smartgrid.shared.AlertMessage
 
 final class AlertBusinessLogic(
-    storage: AlertStorage,
-    mailService: MailService,
-    state: AlertState
+    repository: AlertRepository,
+    mailService: MailService
 ) {
   def handle(message: AlertMessage): IO[List[ActionResult]] =
     AlertBusinessLogic
@@ -27,15 +26,15 @@ final class AlertBusinessLogic(
         ConsoleAlertLogger.log(alert, severity).as(ActionSucceeded("log-alert"))
 
       case StoreAlert(alert) =>
-        storage.appendAlert(alert).map(
+        repository.appendAlert(alert).flatMap(
           _.fold(
-            error => ActionFailed("store-alert", error),
-            _ => ActionSucceeded("store-alert")
+            error => IO.raiseError(new RuntimeException(error)),
+            _ => IO.pure(ActionSucceeded("store-alert"))
           )
         )
 
       case StoreCriticalAlert(alert) =>
-        storage.appendCriticalAlert(alert).map(
+        repository.appendCriticalAlert(alert).map(
           _.fold(
             error => ActionFailed("store-critical-alert", error),
             _ => ActionSucceeded("store-critical-alert")
@@ -50,8 +49,8 @@ final class AlertBusinessLogic(
           )
         )
 
-      case AddToDashboardState(alert) =>
-        state.add(alert).as(ActionSucceeded("add-to-dashboard-state"))
+      case AddToDashboardState(_) =>
+        IO.pure(ActionSucceeded("dashboard-reads-postgres"))
     }
 }
 

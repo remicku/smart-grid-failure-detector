@@ -8,6 +8,7 @@ val catsEffectV = "3.5.4"
 val munitV      = "1.0.0"
 val jakartaMailV = "2.0.1"
 val slf4jSimpleV = "1.7.36"
+val postgresqlV = "42.7.3"
 
 lazy val shared = project
   .in(file("shared"))
@@ -54,6 +55,7 @@ lazy val alertHandler = project
     libraryDependencies ++= Seq(
       "com.github.fd4s" %% "fs2-kafka"   % fs2KafkaV,
       "org.typelevel"   %% "cats-effect" % catsEffectV,
+      "org.postgresql"   % "postgresql"   % postgresqlV,
       "com.sun.mail"     % "jakarta.mail" % jakartaMailV,
       "org.slf4j"        % "slf4j-simple" % slf4jSimpleV,
       "org.scalameta"   %% "munit"       % munitV % Test

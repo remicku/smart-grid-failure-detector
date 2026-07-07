@@ -20,7 +20,7 @@ import smartgrid.alerthandler.service.{
   ActionSucceeded,
   AlertBusinessLogic,
   AlertCounts,
-  AlertState,
+  AlertRepository,
   MailService
 }
 import smartgrid.shared.AlertMessage
@@ -28,7 +28,7 @@ import smartgrid.shared.AlertMessage
 final class AlertApi(
     config: ServerConfig,
     kafkaTopic: String,
-    state: AlertState,
+    repository: AlertRepository,
     mailService: MailService,
     businessLogic: AlertBusinessLogic,
     dispatcher: Dispatcher[IO]
@@ -72,9 +72,9 @@ final class AlertApi(
     (method, path) match {
       case ("GET", "/" | "/dashboard") =>
         (
-          state.all,
-          state.counts,
-          state.countsByRegion,
+          repository.all,
+          repository.counts,
+          repository.countsByRegion,
           mailService.readRecipients
         ).tupled.flatMap { case (alerts, counts, countsByRegion, recipientsResult) =>
           recipientsResult.fold(
@@ -124,7 +124,7 @@ final class AlertApi(
         )
 
       case ("GET", "/health") =>
-        state.counts.flatMap(counts =>
+        repository.counts.flatMap(counts =>
           sendJson(
             exchange,
             200,
@@ -138,7 +138,7 @@ final class AlertApi(
         )
 
       case ("GET", "/alerts") =>
-        state.all.flatMap(alerts => sendJson(exchange, 200, alerts))
+        repository.all.flatMap(alerts => sendJson(exchange, 200, alerts))
 
       case ("POST", "/dev/alerts") =>
         readRequestBody(exchange)
@@ -159,10 +159,10 @@ final class AlertApi(
           )
 
       case ("GET", "/alerts/critical") =>
-        state.critical.flatMap(alerts => sendJson(exchange, 200, alerts))
+        repository.critical.flatMap(alerts => sendJson(exchange, 200, alerts))
 
       case ("GET", "/alerts/count") =>
-        state.counts.flatMap(counts => sendJson(exchange, 200, counts))
+        repository.counts.flatMap(counts => sendJson(exchange, 200, counts))
 
       case ("GET", "/notifications") =>
         mailService.readNotifications.flatMap(
@@ -175,12 +175,12 @@ final class AlertApi(
       case ("GET", regionPath) if regionPath.startsWith("/alerts/by-region/") =>
         val encodedRegion = regionPath.stripPrefix("/alerts/by-region/")
         val region = URLDecoder.decode(encodedRegion, StandardCharsets.UTF_8.name())
-        state.byRegion(region).flatMap(alerts => sendJson(exchange, 200, alerts))
+        repository.byRegion(region).flatMap(alerts => sendJson(exchange, 200, alerts))
 
       case ("GET", regionPath) if regionPath.startsWith("/alerts/by-zone/") =>
         val encodedRegion = regionPath.stripPrefix("/alerts/by-zone/")
         val region = URLDecoder.decode(encodedRegion, StandardCharsets.UTF_8.name())
-        state.byRegion(region).flatMap(alerts => sendJson(exchange, 200, alerts))
+        repository.byRegion(region).flatMap(alerts => sendJson(exchange, 200, alerts))
 
       case ("GET", _) =>
         sendJson(exchange, 404, ErrorResponse(s"Unknown route: $path"))
