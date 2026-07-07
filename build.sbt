@@ -48,7 +48,7 @@ lazy val alertDetector = project
   )
 
 lazy val simulator = project
-  .in(file("SensorSimulator"))
+  .in(file("sensor-simulator"))
   .dependsOn(shared)
   .settings(
     name := "simulator",
