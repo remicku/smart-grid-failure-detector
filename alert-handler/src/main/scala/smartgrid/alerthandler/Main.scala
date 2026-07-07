@@ -82,7 +82,7 @@ object Main extends IOApp {
         source = SensorMessage(
           sensorId = "test-sensor",
           transformerId = "test-transformer",
-          timestamp = System.currentTimeMillis(),
+          timestamp = java.time.Instant.now().toString,
           region = "Test-Region",
           voltage = 220.0,
           current = 30.0,

@@ -81,7 +81,7 @@ Expected JSON:
   "source": {
     "sensorId": "sensor-42",
     "transformerId": "transformer-13",
-    "timestamp": 1782412799000,
+    "timestamp": "2026-06-25T12:00:00Z",
     "region": "Paris-13",
     "voltage": 207.3,
     "current": 31.2,
