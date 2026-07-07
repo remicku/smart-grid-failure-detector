@@ -94,7 +94,15 @@ lazy val datalake = project
   )
   .settings(sparkRunSettings)
 
+lazy val analytics = project
+  .in(file("analytics"))
+  .settings(
+    name := "analytics",
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkV
+  )
+  .settings(sparkRunSettings)
+
 lazy val root = project
   .in(file("."))
-  .aggregate(shared, alertDetector, simulator, alertHandler, bronzeIngestor, datalake)
+  .aggregate(shared, alertDetector, simulator, alertHandler, bronzeIngestor, datalake, analytics)
   .settings(name := "smart-grid")

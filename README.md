@@ -39,3 +39,38 @@ The predictive alert service is mission-critical and imposes strict operational 
 -   A **distributed message broker** as the central ingestion layer. It guarantees high-throughput ingestion, message durability, replay capability, and decoupling between producers (sensors) and consumers.
 -   A **stream processing engine** as the real-time consumer. It evaluates sliding time windows, applies anomaly detection models, and triggers alerts when thresholds are breached.
 -   A second **sink consumer** that writes the raw stream to the Data Lake for long-term storage and batch reprocessing.
+
+## Run
+
+Start Kafka:
+
+```bash
+docker compose up -d
+```
+
+Start the simulator:
+
+```bash
+sbt "simulator/run"
+```
+
+In another terminal, read Kafka and write Bronze:
+
+```bash
+BRONZE_MAX_MESSAGES=20 sbt "bronzeIngestor/run"
+```
+
+Then build Silver and Gold:
+
+```bash
+sbt "datalake/runMain smartgrid.datalake.DataLakeJob"
+```
+
+Then run the statistics job:
+
+```bash
+sbt "analytics/runMain smartgrid.analytics.GoldAnalyticsJob"
+```
+
+The files are written under `data/bronze`, `data/silver`, `data/gold`, and `data/stats`.
+The small page is `data/stats/index.html`.
