@@ -16,3 +16,16 @@ final case class SensorReading(
     failureRiskScore: Double,
     status: String
 )
+
+object SensorSimulator:
+
+  val regions: List[String] =
+    List("Ile-de-France", "Auvergne-Rhone-Alpes", "Occitanie", "Bretagne", "Grand-Est")
+
+  // Borne la valeur entre 0 et 1
+  def clamp01(value: Double): Double = math.max(0.0, math.min(1.0, value))
+
+  // 2 chiffres après la virgule
+  def round2(value: Double): Double = math.round(value * 100.0) / 100.0
+
+  
