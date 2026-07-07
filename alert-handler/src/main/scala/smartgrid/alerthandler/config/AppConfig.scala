@@ -76,7 +76,8 @@ object AppConfig {
   def load: AppConfig =
     AppConfig(
       kafka = KafkaConfig(
-        bootstrapServers = env("SMART_GRID_KAFKA_BOOTSTRAP_SERVERS").getOrElse("localhost:9092"),
+        bootstrapServers = env("SMART_GRID_KAFKA_BOOTSTRAP_SERVERS")
+          .getOrElse("localhost:9092,localhost:9094,localhost:9096"),
         alertsTopic = env("SMART_GRID_ALERTS_TOPIC").getOrElse("ST2"),
         groupId = env("SMART_GRID_ALERT_HANDLER_GROUP_ID").getOrElse("alert-handler"),
         pollTimeoutMs = envLong("SMART_GRID_KAFKA_POLL_TIMEOUT_MS", 1000L)

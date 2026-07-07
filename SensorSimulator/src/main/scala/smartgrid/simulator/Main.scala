@@ -11,7 +11,7 @@ import smartgrid.shared.SensorMessage
 
 object Main extends IOApp.Simple {
 
-  private val Bootstrap   = "localhost:9092"
+  private val Bootstrap   = "localhost:9092,localhost:9094,localhost:9096"
   private val OutputTopic = "ST"
   private val Interval    = 1.second
 

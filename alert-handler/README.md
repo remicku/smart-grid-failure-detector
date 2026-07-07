@@ -18,7 +18,8 @@ The module uses the shared `smartgrid.shared.AlertMessage` model and listens to 
 From the repository root:
 
 ```bash
-docker compose up -d kafka postgres
+docker compose up -d kafka kafka2 kafka3 postgres minio
+docker compose run --rm minio-init
 sbt "alertHandler/run"
 ```
 
@@ -47,7 +48,7 @@ The application reads configuration from environment variables. It does not load
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SMART_GRID_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka bootstrap servers. |
+| `SMART_GRID_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092,localhost:9094,localhost:9096` | Kafka bootstrap servers. |
 | `SMART_GRID_ALERTS_TOPIC` | `ST2` | Input topic containing alert messages. |
 | `SMART_GRID_ALERT_HANDLER_GROUP_ID` | `alert-handler` | Kafka consumer group id. |
 | `SMART_GRID_KAFKA_POLL_TIMEOUT_MS` | `1000` | Kafka poll timeout in milliseconds. |

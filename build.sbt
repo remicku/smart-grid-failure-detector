@@ -10,6 +10,8 @@ val jakartaMailV = "2.0.1"
 val slf4jSimpleV = "1.7.36"
 val postgresqlV = "42.7.3"
 val sparkV = "3.5.1"
+val hadoopAwsV = "3.3.4"
+val awsSdkV = "2.25.70"
 
 lazy val sparkRunSettings = Seq(
   Compile / run / fork := true,
@@ -82,7 +84,8 @@ lazy val bronzeIngestor = project
     libraryDependencies ++= Seq(
       "com.github.fd4s" %% "fs2-kafka"   % fs2KafkaV,
       "org.typelevel"   %% "cats-effect" % catsEffectV,
-      "org.slf4j"        % "slf4j-simple" % slf4jSimpleV
+      "org.slf4j"        % "slf4j-simple" % slf4jSimpleV,
+      "software.amazon.awssdk" % "s3"     % awsSdkV
     )
   )
 
@@ -91,7 +94,10 @@ lazy val datalake = project
   .settings(
     name := "datalake",
     Compile / mainClass := Some("smartgrid.datalake.Main"),
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkV
+    libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-sql" % sparkV,
+      "org.apache.hadoop" % "hadoop-aws" % hadoopAwsV
+    )
   )
   .settings(sparkRunSettings)
 
@@ -100,7 +106,10 @@ lazy val analytics = project
   .settings(
     name := "analytics",
     Compile / mainClass := Some("smartgrid.analytics.Main"),
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkV
+    libraryDependencies ++= Seq(
+      "org.apache.spark" %% "spark-sql" % sparkV,
+      "org.apache.hadoop" % "hadoop-aws" % hadoopAwsV
+    )
   )
   .settings(sparkRunSettings)
 

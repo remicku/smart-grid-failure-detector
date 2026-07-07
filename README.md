@@ -42,10 +42,11 @@ The predictive alert service is mission-critical and imposes strict operational 
 
 ## Run
 
-Start Kafka and PostgreSQL:
+Start the replicated Kafka cluster, PostgreSQL, and the S3-compatible data lake:
 
 ```bash
-docker compose up -d kafka postgres
+docker compose up -d kafka kafka2 kafka3 postgres minio
+docker compose run --rm minio-init
 ```
 
 Start the streaming components in separate terminals:
@@ -74,7 +75,7 @@ Then run the statistics job:
 sbt "analytics/run"
 ```
 
-The files are written under `data/bronze`, `data/silver`, `data/gold`, and `data/stats`.
-The small page is `data/stats/index.html`.
+Bronze, Silver, Gold, and statistics are written to the MinIO bucket `smartgrid-lake` under `s3a://smartgrid-lake/`.
+The analytics page is written to `s3a://smartgrid-lake/stats/index.html`.
 
 Each runnable component also has its own `Main.scala` and `build.sbt`, so it can be opened or run as an independent Scala component if needed.

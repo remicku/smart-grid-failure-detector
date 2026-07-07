@@ -4,7 +4,10 @@ ThisBuild / version      := "0.1.0-SNAPSHOT"
 
 name := "analytics"
 
-libraryDependencies += "org.apache.spark" %% "spark-sql" % "3.5.1"
+libraryDependencies ++= Seq(
+  "org.apache.spark" %% "spark-sql" % "3.5.1",
+  "org.apache.hadoop" % "hadoop-aws" % "3.3.4"
+)
 
 Compile / mainClass := Some("smartgrid.analytics.Main")
 Compile / run / fork := true

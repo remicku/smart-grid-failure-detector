@@ -5,9 +5,9 @@ import org.apache.spark.sql.functions._
 
 object DataLakeJob {
 
-  private val bronzePath = "../data/bronze/telemetry.jsonl"
-  private val silverPath = "../data/silver/telemetry"
-  private val goldPath = "../data/gold/telemetry"
+  private val bronzePath = "s3a://smartgrid-lake/bronze/telemetry"
+  private val silverPath = "s3a://smartgrid-lake/silver/telemetry"
+  private val goldPath = "s3a://smartgrid-lake/gold/telemetry"
 
   def main(args: Array[String]): Unit = {
     val bronzeInput = args.headOption.getOrElse(bronzePath)
@@ -18,7 +18,13 @@ object DataLakeJob {
       SparkSession
         .builder()
         .appName("smart-grid-datalake")
-        .master("local[*]")
+        .master(env("SPARK_MASTER", "local[*]"))
+        .config("spark.hadoop.fs.s3a.endpoint", env("S3_ENDPOINT", "http://localhost:9000"))
+        .config("spark.hadoop.fs.s3a.access.key", env("S3_ACCESS_KEY", "smartgrid"))
+        .config("spark.hadoop.fs.s3a.secret.key", env("S3_SECRET_KEY", "smartgrid"))
+        .config("spark.hadoop.fs.s3a.path.style.access", "true")
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", env("S3_SSL_ENABLED", "false"))
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .getOrCreate()
 
     val bronze = spark.read.json(bronzeInput)
@@ -106,4 +112,7 @@ object DataLakeJob {
       col("temperature").isNotNull &&
       col("load").between(0.0, 1.0) &&
       col("failureRiskScore").between(0.0, 1.0)
+
+  private def env(name: String, fallback: String): String =
+    sys.env.lift(name).filter(_.nonEmpty).getOrElse(fallback)
 }

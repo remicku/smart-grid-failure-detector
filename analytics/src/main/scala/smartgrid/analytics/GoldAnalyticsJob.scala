@@ -1,15 +1,16 @@
 package smartgrid.analytics
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
 
+import org.apache.hadoop.fs.{Path => HadoopPath}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions._
+import scala.util.Using
 
 object GoldAnalyticsJob {
 
-  private val goldPath = "../data/gold/telemetry"
-  private val statsPath = "../data/stats"
+  private val goldPath = "s3a://smartgrid-lake/gold/telemetry"
+  private val statsPath = "s3a://smartgrid-lake/stats"
 
   def main(args: Array[String]): Unit = {
     val goldInput = args.headOption.getOrElse(goldPath)
@@ -19,7 +20,13 @@ object GoldAnalyticsJob {
       SparkSession
         .builder()
         .appName("smart-grid-analytics")
-        .master("local[*]")
+        .master(env("SPARK_MASTER", "local[*]"))
+        .config("spark.hadoop.fs.s3a.endpoint", env("S3_ENDPOINT", "http://localhost:9000"))
+        .config("spark.hadoop.fs.s3a.access.key", env("S3_ACCESS_KEY", "smartgrid"))
+        .config("spark.hadoop.fs.s3a.secret.key", env("S3_SECRET_KEY", "smartgrid"))
+        .config("spark.hadoop.fs.s3a.path.style.access", "true")
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", env("S3_SSL_ENABLED", "false"))
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .getOrCreate()
 
     val gold = spark.read.parquet(goldInput)
@@ -35,6 +42,7 @@ object GoldAnalyticsJob {
     save("failure-risk-trend", riskTrend, statsOutput)
 
     AnalyticsPage.write(
+      spark,
       statsOutput,
       Seq(
         AnalyticsPage.Section("Regions with highest failure risk", byRegion),
@@ -46,6 +54,9 @@ object GoldAnalyticsJob {
 
     spark.stop()
   }
+
+  private def env(name: String, fallback: String): String =
+    sys.env.lift(name).filter(_.nonEmpty).getOrElse(fallback)
 
   def regionsHighestRisk(gold: DataFrame): DataFrame =
     gold
@@ -90,10 +101,11 @@ private object AnalyticsPage {
 
   final case class Section(title: String, data: DataFrame)
 
-  def write(basePath: String, sections: Seq[Section]): Unit = {
-    val path = Path.of(basePath, "index.html")
-    Files.createDirectories(path.getParent)
-    Files.writeString(path, page(sections), StandardCharsets.UTF_8)
+  def write(spark: SparkSession, basePath: String, sections: Seq[Section]): Unit = {
+    val path = new HadoopPath(basePath, "index.html")
+    val fileSystem = path.getFileSystem(spark.sparkContext.hadoopConfiguration)
+    val bytes = page(sections).getBytes(StandardCharsets.UTF_8)
+    Using.resource(fileSystem.create(path, true))(_.write(bytes))
     println(s"[analytics] page $path")
   }
 

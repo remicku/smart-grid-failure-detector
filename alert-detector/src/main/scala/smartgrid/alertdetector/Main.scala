@@ -13,13 +13,13 @@ import smartgrid.shared.{AlertMessage, SensorMessage}
 
 object Main extends IOApp.Simple {
 
-  private val Bootstrap   = "localhost:9092"
+  private val Bootstrap   = "localhost:9092,localhost:9094,localhost:9096"
   private val InputTopic  = "ST"
   private val OutputTopic = "ST2"
   private val GroupId     = "alert-detector"
 
   private val consumerSettings =
-    ConsumerSettings[IO, String, String]
+    ConsumerSettings[IO, Array[Byte], String]
       .withBootstrapServers(Bootstrap)
       .withGroupId(GroupId)
       .withAutoOffsetReset(AutoOffsetReset.Earliest)
