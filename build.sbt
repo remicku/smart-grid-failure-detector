@@ -6,6 +6,8 @@ val fs2KafkaV   = "3.5.1"
 val circeV      = "0.14.9"
 val catsEffectV = "3.5.4"
 val munitV      = "1.0.0"
+val jakartaMailV = "2.0.1"
+val slf4jSimpleV = "1.7.36"
 
 lazy val shared = project
   .in(file("shared"))
@@ -26,6 +28,7 @@ lazy val alertDetector = project
     libraryDependencies ++= Seq(
       "com.github.fd4s" %% "fs2-kafka"   % fs2KafkaV,
       "org.typelevel"   %% "cats-effect" % catsEffectV,
+      "org.slf4j"        % "slf4j-simple" % slf4jSimpleV,
       "org.scalameta"   %% "munit"       % munitV % Test
     ),
     testFrameworks += new TestFramework("munit.Framework")
@@ -38,15 +41,31 @@ lazy val simulator = project
     name := "simulator",
     libraryDependencies ++= Seq(
       "com.github.fd4s" %% "fs2-kafka"   % fs2KafkaV,
-      "org.typelevel"   %% "cats-effect" % catsEffectV
+      "org.typelevel"   %% "cats-effect" % catsEffectV,
+      "org.slf4j"        % "slf4j-simple" % slf4jSimpleV
     )
   )
 
-// lazy val alertHandler = project.in(file("alert-handler")).dependsOn(shared)
+lazy val alertHandler = project
+  .in(file("alert-handler"))
+  .dependsOn(shared)
+  .settings(
+    name := "alert-handler",
+    libraryDependencies ++= Seq(
+      "com.github.fd4s" %% "fs2-kafka"   % fs2KafkaV,
+      "org.typelevel"   %% "cats-effect" % catsEffectV,
+      "com.sun.mail"     % "jakarta.mail" % jakartaMailV,
+      "org.slf4j"        % "slf4j-simple" % slf4jSimpleV,
+      "org.scalameta"   %% "munit"       % munitV % Test
+    ),
+    Compile / mainClass := Some("smartgrid.alerthandler.Main"),
+    Compile / run / fork := true,
+    testFrameworks += new TestFramework("munit.Framework")
+  )
 // lazy val datalake = project.in(file("datalake")).dependsOn(shared)
 // lazy val analytics = project.in(file("analytics")).dependsOn(shared)
 
 lazy val root = project
   .in(file("."))
-  .aggregate(shared, alertDetector, simulator)
+  .aggregate(shared, alertDetector, simulator, alertHandler)
   .settings(name := "smart-grid")
