@@ -42,16 +42,18 @@ The predictive alert service is mission-critical and imposes strict operational 
 
 ## Run
 
-Start Kafka:
+Start Kafka and PostgreSQL:
 
 ```bash
-docker compose up -d
+docker compose up -d kafka postgres
 ```
 
-Start the simulator:
+Start the streaming components in separate terminals:
 
 ```bash
 sbt "simulator/run"
+sbt "alertDetector/run"
+SMART_GRID_MAIL_MODE=file sbt "alertHandler/run"
 ```
 
 In another terminal, read Kafka and write Bronze:
@@ -63,14 +65,16 @@ BRONZE_MAX_MESSAGES=20 sbt "bronzeIngestor/run"
 Then build Silver and Gold:
 
 ```bash
-sbt "datalake/runMain smartgrid.datalake.DataLakeJob"
+sbt "datalake/run"
 ```
 
 Then run the statistics job:
 
 ```bash
-sbt "analytics/runMain smartgrid.analytics.GoldAnalyticsJob"
+sbt "analytics/run"
 ```
 
 The files are written under `data/bronze`, `data/silver`, `data/gold`, and `data/stats`.
 The small page is `data/stats/index.html`.
+
+Each runnable component also has its own `Main.scala` and `build.sbt`, so it can be opened or run as an independent Scala component if needed.

@@ -90,6 +90,7 @@ lazy val datalake = project
   .in(file("datalake"))
   .settings(
     name := "datalake",
+    Compile / mainClass := Some("smartgrid.datalake.Main"),
     libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkV
   )
   .settings(sparkRunSettings)
@@ -98,6 +99,7 @@ lazy val analytics = project
   .in(file("analytics"))
   .settings(
     name := "analytics",
+    Compile / mainClass := Some("smartgrid.analytics.Main"),
     libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkV
   )
   .settings(sparkRunSettings)
