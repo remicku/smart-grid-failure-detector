@@ -12,6 +12,13 @@ object AlertLogic {
     else if (score >= WarningThreshold) Some("WARNING")
     else None
 
+  def evaluate(since: Option[Long], score: Double, now: Long, window: Long): (Option[Long], Option[String]) = {
+    val next      = if (score >= WarningThreshold) since.orElse(Some(now)) else None
+    val sustained = next.exists(start => now - start >= window)
+    val severity  = if (score >= CriticalThreshold || sustained) severityFor(score) else None
+    (next, severity)
+  }
+
   def reasonFor(msg: SensorMessage, severity: String): String =
     s"failureRiskScore=${msg.failureRiskScore} -> $severity " +
       s"(warn>=$WarningThreshold, crit>=$CriticalThreshold)"
